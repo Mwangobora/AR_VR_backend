@@ -121,3 +121,75 @@ declare global {
     }
   }
 }
+
+// Enhanced Scene Connection Types
+export interface SceneConnectionImage {
+  id: number;
+  filename: string;
+  location: string;
+  url?: string;
+  stored_filename?: string;
+  dimensions?: {
+    width?: number;
+    height?: number;
+  };
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+}
+
+export interface SceneConnectionHotspot {
+  direction_angle: number;
+  position_3d: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  position_2d: {
+    x: number;
+    y: number;
+  };
+}
+
+export interface SceneConnectionNavigation {
+  connection_name: string;
+  transition_type: string;
+  distance_meters: number;
+  is_bidirectional?: boolean;
+}
+
+export interface SceneConnectionMetadata {
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface EnhancedSceneConnection {
+  id: number;
+  from_image: SceneConnectionImage;
+  to_image: SceneConnectionImage;
+  hotspot: SceneConnectionHotspot;
+  navigation: SceneConnectionNavigation;
+  metadata: SceneConnectionMetadata;
+}
+
+export interface CreateSceneConnectionRequest {
+  from_image_id: number;
+  to_image_id: number;
+  direction_angle: number;
+  distance_meters?: number;
+  transition_type?: string;
+  connection_name: string;
+  is_bidirectional?: boolean;
+  is_active?: boolean;
+}
+
+export interface UpdateSceneConnectionRequest {
+  direction_angle?: number;
+  distance_meters?: number;
+  transition_type?: string;
+  connection_name?: string;
+  is_bidirectional?: boolean;
+  is_active?: boolean;
+}

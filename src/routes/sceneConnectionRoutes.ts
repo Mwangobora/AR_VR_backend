@@ -30,6 +30,9 @@ const updateConnectionValidation = [
 // Get connections for a specific panoramic image (for VR navigation)
 router.get('/image/:imageId', SceneConnectionController.getConnectionsForImage);
 
+// Get a single scene connection by ID
+router.get('/:id', SceneConnectionController.getConnectionById);
+
 // Admin routes (authentication required)
 // Get all connections
 router.get('/', authenticateToken, requireAdmin, SceneConnectionController.getAllConnections);
