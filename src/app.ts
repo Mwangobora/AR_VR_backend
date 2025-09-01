@@ -33,16 +33,16 @@ app.use(cors({
 // Rate limiting - more lenient for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More requests allowed in development
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, 
   message: { error: 'Too many requests from this IP, please try again later.' },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, 
+  legacyHeaders: false, 
 });
 
 // Separate, more lenient rate limiter for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 20 : 200, // Allow more auth attempts in development
+  max: process.env.NODE_ENV === 'production' ? 20 : 200, 
   message: { error: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
