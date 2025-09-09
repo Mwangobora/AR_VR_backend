@@ -126,6 +126,7 @@ class SceneConnectionController {
         distance_meters = 0,
         transition_type = 'walk',
         connection_name,
+        direction = 'forward',
         is_bidirectional = false,
         is_active = true
       } = req.body;
@@ -143,8 +144,8 @@ class SceneConnectionController {
       // Create the connection
       const insertQuery = `
         INSERT INTO scene_connections 
-        (from_image_id, to_image_id, direction_angle, distance_meters, transition_type, connection_name, is_bidirectional, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (from_image_id, to_image_id, direction_angle, distance_meters, transition_type, connection_name, direction, is_bidirectional, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
 
@@ -155,6 +156,7 @@ class SceneConnectionController {
         distance_meters,
         transition_type,
         connection_name,
+        direction,
         is_bidirectional,
         is_active
       ]);
@@ -164,6 +166,16 @@ class SceneConnectionController {
       // If bidirectional, create reverse connection
       if (is_bidirectional) {
         const reverseAngle = (direction_angle + 180) % 360;
+        
+        // Determine reverse direction
+        const directionMap = {
+          'forward': 'backward',
+          'backward': 'forward',
+          'left': 'right',
+          'right': 'left'
+        };
+        const reverseDirection = directionMap[direction as keyof typeof directionMap] || 'backward';
+
         await pool.query(insertQuery, [
           to_image_id,
           from_image_id,
@@ -171,13 +183,14 @@ class SceneConnectionController {
           distance_meters,
           transition_type,
           connection_name ? `${connection_name} (reverse)` : null,
+          reverseDirection,
           false, // Don't make reverse connection bidirectional to avoid infinite loop
           is_active
         ]);
       }
 
       res.status(201).json(connection);
-    } catch (error:any) {
+    } catch (error: any) {
       console.error('Error creating scene connection:', error);
       if (error.code === '23505') { // Unique constraint violation
         res.status(400).json({ error: 'Connection already exists between these images' });
@@ -204,7 +217,7 @@ class SceneConnectionController {
       let paramCount = 1;
 
       for (const [key, value] of Object.entries(updates)) {
-        if (['direction_angle', 'distance_meters', 'transition_type', 'connection_name', 'is_bidirectional', 'is_active'].includes(key)) {
+        if (['direction_angle', 'distance_meters', 'transition_type', 'connection_name', 'direction', 'is_bidirectional', 'is_active'].includes(key)) {
           updateFields.push(`${key} = $${paramCount}`);
           values.push(value);
           paramCount++;
@@ -254,6 +267,70 @@ class SceneConnectionController {
     } catch (error) {
       console.error('Error deleting scene connection:', error);
       res.status(500).json({ error: 'Failed to delete scene connection' });
+    }
+  }
+
+  // Get connections by direction for a specific image
+  static async getConnectionsByDirection(req: Request, res: Response) {
+    try {
+      const { imageId } = req.params;
+      const { direction } = req.query;
+
+      let whereClause = 'sc.from_image_id = $1 AND sc.is_active = true';
+      const queryParams = [imageId];
+
+      if (direction && ['forward', 'backward', 'left', 'right'].includes(direction as string)) {
+        whereClause += ' AND sc.direction = $2';
+        queryParams.push(direction as string);
+      }
+
+      const query = `
+        SELECT
+          sc.*,
+          json_build_object(
+            'id', pi_from.id,
+            'location_id', pi_from.location_id,
+            'original_filename', pi_from.original_filename,
+            'stored_filename', pi_from.stored_filename,
+            'file_path', pi_from.file_path,
+            'file_size', pi_from.file_size,
+            'mime_type', pi_from.mime_type,
+            'width', pi_from.width,
+            'height', pi_from.height,
+            'is_processed', pi_from.is_processed,
+            'uploaded_by', pi_from.uploaded_by,
+            'created_at', pi_from.created_at
+          ) as from_image,
+          json_build_object(
+            'id', pi_to.id,
+            'location_id', pi_to.location_id,
+            'original_filename', pi_to.original_filename,
+            'stored_filename', pi_to.stored_filename,
+            'file_path', pi_to.file_path,
+            'file_size', pi_to.file_size,
+            'mime_type', pi_to.mime_type,
+            'width', pi_to.width,
+            'height', pi_to.height,
+            'is_processed', pi_to.is_processed,
+            'uploaded_by', pi_to.uploaded_by,
+            'created_at', pi_to.created_at
+          ) as to_image,
+          l_from.name as from_location_name,
+          l_to.name as to_location_name
+        FROM scene_connections sc
+        JOIN panoramic_images pi_from ON sc.from_image_id = pi_from.id
+        JOIN panoramic_images pi_to ON sc.to_image_id = pi_to.id
+        JOIN locations l_from ON pi_from.location_id = l_from.id
+        JOIN locations l_to ON pi_to.location_id = l_to.id
+        WHERE ${whereClause}
+        ORDER BY sc.direction_angle ASC
+      `;
+
+      const result = await pool.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching connections by direction:', error);
+      res.status(500).json({ error: 'Failed to fetch connections by direction' });
     }
   }
 

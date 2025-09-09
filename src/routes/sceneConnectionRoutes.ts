@@ -1,5 +1,5 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const { SceneConnectionController } = require('../controllers/sceneConnectionController');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 
@@ -13,6 +13,7 @@ const createConnectionValidation = [
   body('distance_meters').optional().isFloat({ min: 0 }).withMessage('Distance must be non-negative'),
   body('transition_type').optional().isIn(['walk', 'teleport', 'fade', 'slide']).withMessage('Invalid transition type'),
   body('connection_name').optional().isLength({ max: 255 }).withMessage('Connection name too long'),
+  body('direction').optional().isIn(['forward', 'backward', 'left', 'right']).withMessage('Direction must be one of: forward, backward, left, right'),
   body('is_bidirectional').optional().isBoolean().withMessage('is_bidirectional must be boolean'),
   body('is_active').optional().isBoolean().withMessage('is_active must be boolean')
 ];
@@ -22,13 +23,21 @@ const updateConnectionValidation = [
   body('distance_meters').optional().isFloat({ min: 0 }).withMessage('Distance must be non-negative'),
   body('transition_type').optional().isIn(['walk', 'teleport', 'fade', 'slide']).withMessage('Invalid transition type'),
   body('connection_name').optional().isLength({ max: 255 }).withMessage('Connection name too long'),
+  body('direction').optional().isIn(['forward', 'backward', 'left', 'right']).withMessage('Direction must be one of: forward, backward, left, right'),
   body('is_bidirectional').optional().isBoolean().withMessage('is_bidirectional must be boolean'),
   body('is_active').optional().isBoolean().withMessage('is_active must be boolean')
+];
+
+const directionQueryValidation = [
+  query('direction').optional().isIn(['forward', 'backward', 'left', 'right']).withMessage('Direction must be one of: forward, backward, left, right')
 ];
 
 // Public routes (no authentication required)
 // Get connections for a specific panoramic image (for VR navigation)
 router.get('/image/:imageId', SceneConnectionController.getConnectionsForImage);
+
+// Get connections for a specific panoramic image filtered by direction (for VR navigation)
+router.get('/image/:imageId/direction', directionQueryValidation, SceneConnectionController.getConnectionsByDirection);
 
 // Admin routes (authentication required)
 // Get all connections

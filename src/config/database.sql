@@ -94,3 +94,7 @@ CREATE TABLE scene_connections (
 CREATE INDEX idx_scene_connections_from_image ON scene_connections(from_image_id);
 CREATE INDEX idx_scene_connections_to_image ON scene_connections(to_image_id);
 CREATE INDEX idx_scene_connections_active ON scene_connections(is_active);
+
+ALTER TABLE scene_connections
+ADD COLUMN direction VARCHAR(20) NOT NULL DEFAULT 'forward'
+CHECK (direction IN ('forward', 'backward', 'left', 'right'));
